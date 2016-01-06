@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <link rel="stylesheet" type="text/css" href="css/theme/night-custom.css">
+  </style>
+  </head>
+
+  <xmp id="notes" class="reveal" theme="united" style="display:none;">
+  </xmp>
+  <script type="text/javascript">
+    var req = new XMLHttpRequest();
+    req.onload = function() {
+      var xmpNode = document.getElementById('notes');
+      xmpNode.appendChild(document.createTextNode(this.responseText));
+    }
+    req.open('GET', 'notes.md', false);
+    req.send();
+  </script>
+
+  <script src="js/strapdown.js"></script>
+
+</html>
