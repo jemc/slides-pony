@@ -63,11 +63,11 @@ However, if I ask you to go get groceries, deposit the paycheck, and pay the ren
 
 Depending on how we structure our code and our concepts, the order-nondeterminism of concurrency can lead to subtle bugs that are difficult to reason about, reproduce, and test for. Here are some broad categories of concurrency bugs that we encounter:
 
-one or more tasks access the same data in an undefined order, where one or more order possibilities leads to incorrect behavior.
+data race one or more tasks access the same data in an undefined order, where one or more order possibilities leads to incorrect behavior.
 
-a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior in other tasks.
+non-atomicity a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior in other tasks.
 
-interdependent tasks that are *blocking* (that is, waiting) for data or signal from eachother are mutually unable to make progress.
+deadlock interdependent tasks that are *blocking* (that is, waiting) for data or signal from eachother are mutually unable to make progress.
 
 ----
 
@@ -95,7 +95,7 @@ So let's take a look at some of the structured approaches and conventions that w
 
 So, how does it help?
 
-Using synchronization primitives like locks, mutexes, monitors, and semaphores allows the programmer to impose *restrictions* on the relative order of *specific groups* of operations within concurrent tasks.
+Using synchronization primitives like locks, mutexes, monitors, and semaphores allows us to impose *restrictions* on the relative order of *specific groups* of operations within concurrent tasks.
 
 Effectively, these primitives force the tasks to *wait* (or *block*) for availability where they would otherwise plunge ahead and violate the given restrictions.
 
@@ -121,7 +121,7 @@ Now, that was indeed an extreme and contrived example, but we can see that in le
 
 In this way, synchronization is more of a *workaround* for concurrency than a safe pattern of concurrency, and the more we use synchronization the more we will lose the benefits concurrency gives us
 
-A familiar example of over-synchronization is the Global Interpreter Lock found in the reference implementation of Ruby, in which almost all of the operations of the interpreter are synchronized by a single global lock, which severely reduces the actual concurrency that is possible using Ruby Threads - in fact, it shows us that our earlier extreme example isn't all that contrived after all - it's worth noting that the competing Ruby implementations, Rubinius and JRuby, improve on this strategy by using many fine-grained locks instead of one single global lock
+A familiar example of over-synchronization is the Global Interpreter Lock (or GIL) found in the reference implementation of Ruby, in which *almost* all of the operations of the interpreter are synchronized by a single global lock, which severely reduces the actual concurrency that is possible using Ruby Threads - in fact, it shows us that our earlier extreme example isn't all that contrived after all - it's worth noting that the competing Ruby implementations, Rubinius and JRuby, improve on this strategy by using many fine-grained locks instead of one single global lock
 
 ----
 
@@ -237,6 +237,7 @@ These nice properties - as well as others - make immutable data structures a pop
 
 * always safe
 * easy to reason about
+* provides a way to share global data
 giving in to the restriction that it can't be changed
 
 ----
@@ -261,19 +262,19 @@ giving in to the restriction that it can't be changed
 
 ### Why is it safe?
 
-Let's talk about what we mean when we say isolated - isolated state is only accessible from one task at a time, so is not concurrently shared
+Let's talk about what we mean when we say isolated - isolated state is only accessible from one task at a time, so it is not *really* concurrently shared
 
-When tasks are implemented as threads, this is sometimes called *thread-ownership* - the state is held exclusively by a single thread, its owner - and no other thread it touch it
+When tasks are implemented as threads, this is sometimes called *thread-ownership* - the state object is held exclusively by a single thread, its owner - and no other thread it touch it
 
 This is clearly safe, but without sharing, it doesn't solve the original problem
 
-We can't share isolated state between multiple tasks at once, but we *can* share isolated state *across time* by securely transferring it from one task to another - this is sometimes called *message passing* or transferring thread ownership
+We can't share isolated state among multiple tasks at once, but we *can* share isolated state *across time* by securely transferring it from one task to another - this is sometimes called *message passing* or transferring thread ownership
 
 * "thread ownership"
 
 * "message passing"
 
-When I say securely transferring, I mean this - if we can guarantee that the original task doesn't hold on to any dangling references to the transferred state object, then it is still isolated when it reaches the next task - but if even a single reference is retained in the original task - sometimes called a *leaked* reference - all safety goes out the window, because both tasks have access to the same mutable state object
+When I say securely transferring, I mean this - if we can guarantee that the original task doesn't hold on to any dangling references to the transferred state object, then it is still isolated when it reaches the next task - but if even a single reference is retained in the original task - sometimes called a *leaked* reference - all safety goes out the window, because both tasks have access to the same mutable state object at the same time
 
 So this method usually requires strict discipline to avoid leaking references, or language support to check and enforce that no references are leaked
 
@@ -322,7 +323,7 @@ So this method usually requires strict discipline to avoid leaking references, o
 
 Each of these paradigms has its advantages and disadvantages, and they each have their place in our applications - so why should we have to choose?
 
-However, remember that Synchronization was not a safe pattern for concurrency, but rather a way to reduce concurrency where we needed to.
+However, remember that Synchronization was not a safe pattern for concurrency, but rather a *workaround*, a way to *reduce*  concurrency where we needed to.
 
 We want to maximize concurrency, so let's leave Synchronization behind for now, and see if we can create our applications without it.
 
@@ -332,9 +333,9 @@ We want to maximize concurrency, so let's leave Synchronization behind for now, 
 
 We want to use tools and conventions that make these safe patterns easy to use - programmers are lazy, so we have to make it easy to do the right thing or we'll mostly choose to do the wrong thing.
 
-In fact, let's take it a step further and say that we never want to ship an application that isn't concurrency safe. If we *enforce* the safe patterns, then we can write highly concurrent applications while remaining fully confident in their safety.
+In fact, let's take it a step further and say that we never want to ship an application that isn't concurrency safe. If we verify and *enforce* the safe patterns, then we can write highly concurrent applications while remaining fully confident in their safety.
 
-Since we're mixing and matching the safe concurrency patterns, we also want to make it clear to eachother and to ourselves which patterns we are using for any given part of our code. For example, no human or tool that's reading our code should ever have to guess whether a given state object is intended to be *immutable* or *isolated*.
+Since we're mixing and matching the safe concurrency patterns, we also want to make it clear to s and to ourselves which patterns we are using for any given part of our code. For example, no human or tool that's reading our code should ever have to guess whether a given state object is intended to be *immutable* or *isolated*.
 
 Explicit clarity of intent will keep our applications easy to reason about as their behaviour becomes more complex.
 
@@ -366,7 +367,7 @@ and the core developers - a handful of academic folks in Britain - have given it
 
 Pony is a static, compiled language. The compiler is the tool that statically analyzes and enforces the safe concurrency patterns we've been talking about - static means that it doesn't have to run your code to understand it.
 
-If Pony were a dynamic language (as opposed to static), it would need to run your code before it understood it - This effectively means it would need to run your code surrounded by a bunch of runtime checks to ensure concurrency safety at every step of the way, effectively slowing down your code as well as making you add a bunch of guard code to "rescue" concurrency violation errors if they do happen.
+If Pony were a dynamic language (as opposed to static), it wouldn't start to understand your code until it was running - This effectively means it would need to run your code surrounded by a bunch of runtime checks to ensure concurrency safety at every step of the way, effectively slowing down your code as well as making you add a bunch of guard code to "rescue" concurrency violation errors if they do happen, because you wouldn't know ahead of time if those violations were there or not.
 
 Doing this analyis statically instead allows your application to only spend time only doing "business logic".
 
@@ -379,9 +380,9 @@ In terms of performance, Pony applications are comparable to some of the fastest
 
 Type safety is also part of Pony's static analysis.
 
-Now, like most of you, I am totally comfortable writing robust code in "type-less" languages like Ruby and Javascript, and I often argue that type-safe languages usually create more hassle for the programmer than they solve.
+Now, like most of you, I groan a little bit here, because I am totally comfortable writing robust code in "type-less" languages like Ruby and Javascript, and I often argue that type-safe languages usually create more hassle for the programmer than they solve.
 
-However, in Pony, the concurrency patterns we've been talking about are *part of the type system*. This is a big deal because while it's pretty easy to intuitively understand and reason about what types of objects you're dealing with in each part of a well-written application, it can be much harder to understand and reason about how those objects might be accessed concurrently.
+However, in Pony, the concurrency patterns we've been talking about are *part of the type system*. This is a big deal because while it's pretty easy to intuitively understand and reason about what types of objects you're dealing with in each part of a well-written application, it can be much harder to understand and reason about how those objects might be accessed concurrently, and having those assumptions be implicit means that you or others will inevitably get confused at some point as to what's going on.
 
 In this case, since we're already doing a lot of static analysis to ensure concurrency safety, I think it's reasonable and helpful to go for type safety as well, and Pony does a pretty good job of not making this too much of a headache for the programmer, with lots of syntax sugar.
 
@@ -417,7 +418,7 @@ We give these actor definitions to the Pony runtime, which handles their message
 
 Because our actors follow the safe concurrency patterns that we've been discussing, there's no need for any synchronization - and indeed there are no synchronization primitives in Pony - Pony applications are lock-free by nature.
 
-In fact, there are no blocking operations at all - so your actors never spend any time waiting around (except for more messages)
+In fact, there are no blocking operations at all - so your actors are never waiting around within a behaviour, unable to receive new messages.
 
 ---
 
@@ -507,11 +508,25 @@ Now let's look at the full table of Pony reference capabilities.
 
 Each object reference in Pony is marked by a specific reference capability, which dictates what can and cannot be done with that object reference - specifically:
 
-whether or not the reference can read or write the objects data,
-whether other references can read or write the objects data, and
+whether or not the reference can read or write the object's data,
+whether other references can read or write the object's data, and
 whether the reference can be sent in a message to another actor.
 
-(Discuss each)
+A reference capability can only be sendable to another actor if doing so is guaranteed not to allow any data races. This guarantee is the direct result of whether the other constraints are enough to enforce one of the three safe concurrency patterns.
+
+So let's take a quick look at each reference capability and what it means.
+
+`ref` is a mutable reference - another way to look at it is that has no access constraints at all.  For this reason, it is not safely sendable.
+
+`val` is an immutable reference - it is read-only, *and* it is guaranteed that *no other references exist* that can write to the same object - thus, it is guaranteed to never change.  This makes it sendable, as it is safe to share concurrently.
+
+`box` is a read-only reference - however, it is not immutable because there *may* be *other references* that can write to the object - so even though you can't change the object with this reference, it could be changed using another reference somewhere else.  This means it is not safe to share concurrently and not sendable.
+
+`iso` is an isolated reference - it is read/write-unique, meaning this reference can access the object, but *no other references exist* that can access the object at all.  Because only one actor can hold an isolated reference to an object at any given time, no concurrent access is possible, so it is safe to mutate it.  It is sendable, but note that you have an actor must *give up* its isolated reference before it can be sent to another actor.  In fact, because of the uniqueness constraint, you can't alias an isolated reference at all without *downgrading* it to a *different* reference capability without the uniqueness constraint.
+
+`trn` is similar to an isolated reference, but it is only write-unique instead of read/write-unique, meaning that other references to the object *can exist*, but none of them can *write* to the object.  It is *not* sendable, because it is still mutable and thus cannot be shared.  `trn` is short for *transitional*, because it is most often used as a way to temporarily mutate an object before converting it to an immutable reference.  You can convert a `trn` to a `val` by giving up the `trn` reference, which was the only way to mutate the object.  Without no way left to mutate an object, it becomes immutable.
+
+`tag` is an opaque reference - it allows neither reading from nor writing any of the underlying object's fields.  This may not seem very useful at first, but `tag` is actually the capability used to refer to other actors in Pony.  This makes sense, because you shouldn't be able read or write the actors field from outside the actor.  However, the `tag` reference does have the address (or *identity*) of the object, so you can still use a `tag` reference to do identity comparisons for objects, and you can still use it to send asynchronous *messages* to actors.
 
 ----
 
@@ -554,7 +569,9 @@ We also see the `box` reference capability in the definition of the `age_diff` m
 
 Remember that the `box` reference capability means that we can only read from it, not write to it - because our view of the `Person` instance is a `box`, this means that we can't change any fields of the `Person` from within the `age_diff` method - this makes sense, because just measuring a `Person` object shouldn't change it - if we wanted to change state from within the method, we'd have to declare it as `fun ref age_diff` instead.
 
-When the compiler knows that the `age_diff` method doesn't modify any state, it can make certain performance optimizations based on that guarantee
+When the compiler knows that the `age_diff` method doesn't modify any state, it can make certain performance optimizations based on that guarantee.
+
+An astute viewer might notice that we're also not modifying the *other* `Person` in the `age_diff` method either, so we can actually change that parameter signature to accept a `Person box` instead of a `Person ref`.
 
 From another perspective, declaring as `fun box age_diff` means that we can call this method on any `Person` that we have read access to, not caring whether we have write access or whether anyone else has read or write access.
 
@@ -562,7 +579,7 @@ If we were to declare it as `fun ref age_diff`, we would be prevented from calli
 
 If we were to declare it as `fun val age_diff`, we would be prevented from calling that method if *anyone else* had write access to the `Person`.
 
-If we were to declare it as `fun iso age_diff`, we would be prevented from calling that method if anyone else had *any access* to the `Person`, read *or* write.our access
+If we were to declare it as `fun iso age_diff`, we would be prevented from calling that method if anyone else had *any access* to the `Person`, read *or* write access.
 
 Note that in general, restricting what we can do within the method gives us more freedom in how we can call, and vice versa - this is a common theme with compilers - imposing restrictions actually give you more freedom in other ways.
 
@@ -573,6 +590,16 @@ Reference capabilities are all about carefully choosing the restrictions we want
 ## Pony Concepts
 ### Reference Capabilities Summary
 
-Reference capabilities may seem convoluted, but if you spend a little time using them, they become second-nature, and you start to see all of your concurrency problems in these terms
+There's so much more to talk about with the details of how reference capabilities work - the rules for *downgrading* to lower capabilities or *lifting* to higher capabilities - the rules for how capabilities to objects "filter" (or *combine with*) the capabilities of those objects' fields - but I think I've already talked enough for today, so I'll leave the rest of the discovery to those of you who are interested enough to read about it or ask me specific questions.
 
-These concepts are often implicit in our code anyway when we're writing concurrent applications. Making the ideas explicit in syntax helps us organize our thoughts and prove to ourselves and the compiler that what we're doing is safe
+Reference capabilities may seem convoluted, but if you spend a little time using them, they become second-nature, and you start to see all of your concurrency problems in these terms.
+
+These concepts are implicit in our code anyway when we're writing concurrent applications. Making the ideas explicit in syntax helps us organize our thoughts and prove to ourselves and the compiler that what we're doing is safe.
+
+One of the really powerful benefits of how reference capabilities are implemented in Pony is that they have no runtime cost - there are no safety checks executed in your application, because it's all proven safe at compile-time - in fact, reference capabilities don't exist at all at runtime - they are compile-time constraints that fall away in the final compiled code.
+
+The other runtime cost you avoid is the cost of synchronization - again, Pony is lock-free - so every time your code is accessing data, it doesn't ever have to wait to acquire a lock - the access is already proven to be safe. This means you only spending those precious CPU cycles doing the real work of the application.
+
+---
+
+# Questions?

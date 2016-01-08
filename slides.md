@@ -435,3 +435,14 @@ class ref Person
 ## Pony Concepts
 ### Reference Capabilities Summary
 
+There's more to see, but not today `*`*wink*`*`
+
+There's a learning curve, but it's worth it!
+
+Ref caps bring explicit structure to lock-free concurrency
+
+Ref caps have no runtime cost!
+
+---
+
+# Questions?
