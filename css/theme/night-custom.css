@@ -154,6 +154,11 @@ body {
   word-wrap: break-word;
   box-shadow: 0px 0px 6px rgba(0, 0, 0, 0.3); }
 
+.reveal code pre {
+  text-align: center;
+  font-size: 1.1em;
+  font-family: monospace;
+
 .reveal code {
   font-family: monospace; }
 

@@ -1,9 +1,25 @@
 
+![LFNW-start](http://i.imgur.com/oAfZSvL.png)
+
+---
+
 ![Pony](img/horse.png)
 
 # Pony
 ## An Actor Language For
-### Provably Safe Lock-Free Concurrency
+### Provably Safe Lockless Concurrency
+
+---
+
+## Who Am I?
+
+![jemc](img/jemc.png) ![cb](img/cb.png)
+
+### Joe Eli McIlvain - Citrusbyte
+
+https://github.com/jemc - https://citrusbyte.com
+
+These slides on GitHub: https://github.com/jemc/slides-pony
 
 ---
 
@@ -125,16 +141,6 @@ So let's not share any state.
 
 ## Share Nothing
 
-### Examples
-
-* multiple tasks as concurrent UNIX processes, each with a separate input and output stream
-
-* multiple tasks as concurrent POSIX threads in C, each with no access to any global or static state
-
-----
-
-## Share Nothing
-
 ### Advantages
 
 * always safe
@@ -175,16 +181,6 @@ So let's not allow any mutation of it.
 
 ## Share Immutable State
 
-### Examples
-
-* multiple tasks as concurrent UNIX processes, each with a separate input and output stream as well as access to a read-only file system.
-
-* multiple tasks as concurrent "processes" in a single Erlang VM, with shared access to some immutable data structures.
-
-----
-
-## Share Immutable State
-
 ### Advantages
 
 * always safe
@@ -220,16 +216,6 @@ So let's share it indirectly, *across time*.
 * "thread ownership"
 
 * "message passing"
-
-----
-
-## Transfer Isolated State
-
-### Examples
-
-* multiple tasks as concurrent CZMQ actors, passing struct pointers over `inproc` sockets (with careful discipline not to leak references).
-
-* multiple tasks as concurrent Go-routines, passing objects over Go channels (with careful discipline not to leak references).
 
 ----
 
@@ -280,11 +266,11 @@ Clean, consistent syntax and rules
 
 ## Enter Pony
 ### A Language for Provably Safe
-### Lock-Free Concurrency
+### Lockless Concurrency
 
 http://www.ponylang.org/
 
-https://github.com/CausalityLtd/ponyc
+https://github.com/ponylang/ponyc
 
 ----
 
@@ -326,6 +312,8 @@ But objects are nice and natural abstractions
 
 In Pony we can have them *and keep* many benefits of FP
 
+And you can still use functions when it makes sense
+
 ----
 
 ## Enter Pony
@@ -333,11 +321,183 @@ In Pony we can have them *and keep* many benefits of FP
 
 Pass messages, trigger behaviours
 
+Messages have causal order, not sequential order
+
 Scheduled by the runtime
 
-No synchronization primitives (lock-free)
+No synchronization primitives (lockless)
 
 No blocking operations
+
+---
+
+## Pony Paradigms
+
+----
+
+## Pony Paradigms
+### No Blocking!
+
+Blocking is an anti-pattern
+
+If we allowed blocking it would either:
+
+* make our actor go idle when there is still more work for it to do
+
+* make our actor behaviours non-atomic (and accumulate memory)
+
+We choose never-idle, always atomic.
+
+We choose to never make the asynchronous appear synchronous.
+
+----
+
+## Pony Paradigms
+### Causality
+
+----
+
+## Pony Paradigms
+### Causality
+
+Forget total order, embrace causal order
+
+<code>
+```ruby
+      (events over time)
+<-- A ---- B ---- C ---- D -->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Forget total order, embrace causal order
+
+<code>
+```ruby
+<---- A --------------------->
+.                            .
+<--------------------- B ---->
+.                            .
+<---------------- C --------->
+.                            .
+<-- D ----------------------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Effects follow causes
+
+<code>
+```ruby
+<---- A --------------------->
+.      \                     .
+<------ B ------------------->
+.                            .
+<---------------- C --------->
+.                  \         .
+<------------------ D ------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Forked message passing causality
+
+<code>
+```ruby
+<-- A1***A2 ----------------->
+.    \    \                  .
+<---- LA - \ ----- LB ------->
+.           \     /          .
+<---------- B1***B2 --------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Forked message passing causality, breaks down
+
+<code>
+```ruby
+<-- A1***A2 ----------------->
+.    ^~~~~\~~~~~~~~~~~~~~,   .
+<--------- \ ----- LB -- LA ->
+.           \     /          .
+<---------- B1***B2 --------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Single chain of message passing, but weird code
+
+<code>
+```ruby
+<------- A2 ---------------->
+.         \                 .
+<-------- LA --- LB -------->
+.          \     /          .
+<--------- B1***B2 --------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Causality
+
+Forked message passing causality, enforced in Pony
+
+<code>
+```ruby
+<-- A1***A2 ----------------->
+.    \    \                  .
+<---- LA - \ ----- LB ------->
+.           \     /          .
+<---------- B1***B2 --------->
+```
+</code>
+
+----
+
+## Pony Paradigms
+### Capability Security
+
+Unforgeable tokens of authority
+
+Authority is inherently decentralized
+
+Principle of least privilege
+
+Tokens are revocable
+
+----
+
+## Pony Paradigms
+### Capability Security
+
+Object references as capabilities
+
+Object references are unforgable
+
+Object references can be attenuated
 
 ---
 
@@ -352,14 +512,14 @@ No blocking operations
 class Person
   var name: String = "John Doe"
   var age:  U8     = 0
-  
+ 
   fun greeting(): String =>
     "Hello, " + name
-  
-  fun age_diff(other: Person): U8 =>
-    if age > other.age
-    then age - other.age
-    else other.age - age
+ 
+  fun age_diff(that: Person): U8 =>
+    if age > that.age
+    then age - that.age
+    else that.age - age
     end
 ```
 
@@ -410,11 +570,11 @@ b = a          // COMPILER ERROR - can't reassign a let reference
 class Person
   var name: String = "John Doe"
   var age:  U8     = 0
-  
-  fun age_diff(other: Person): U8 =>
-    if age > other.age
-    then age - other.age
-    else other.age - age
+ 
+  fun age_diff(that: Person): U8 =>
+    if age > that.age
+    then age - that.age
+    else that.age - age
     end
 ```
 
@@ -422,11 +582,11 @@ class Person
 class ref Person
   var name: String val = "John Doe"
   var age:  U8 val     = 0
-  
-  fun box age_diff(other: Person ref): U8 val =>
-    if age > other.age
-    then age - other.age
-    else other.age - age
+ 
+  fun box age_diff(that: Person ref): U8 val =>
+    if age > that.age
+    then age - that.age
+    else that.age - age
     end
 ```
 
@@ -439,10 +599,14 @@ There's more to see, but not today `*`*wink*`*`
 
 There's a learning curve, but it's worth it!
 
-Ref caps bring explicit structure to lock-free concurrency
+Ref caps bring explicit structure to lockless concurrency
 
 Ref caps have no runtime cost!
 
 ---
 
 # Questions?
+
+---
+
+![LFNW-finish](http://i.imgur.com/9eAtxdp.png)
