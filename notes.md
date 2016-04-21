@@ -450,7 +450,7 @@ As we started talking about near the end of the last slide, our goal should be t
 ### Causality
 
 ```ruby
-      (events over time)
+.     (events over time)     .
 <-- A ---- B ---- C ---- D -->
 ```
 

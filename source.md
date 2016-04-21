@@ -551,7 +551,7 @@ Forget total order, embrace causal order
 
 <code>
 ```ruby
-      (events over time)
+.     (events over time)     .
 <-- A ---- B ---- C ---- D -->
 ```
 </code>
