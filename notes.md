@@ -75,11 +75,11 @@ However, if I ask you to go get groceries, deposit the paycheck, and pay the ren
 
 Depending on how we structure our code and our concepts, the order-nondeterminism of concurrency can lead to subtle bugs that are difficult to reason about, reproduce, and test for. Here are some broad categories of concurrency bugs that we encounter:
 
-data race one or more tasks access the same data in an undefined order, where one or more order possibilities leads to incorrect behavior.
+data race - one or more tasks access the same data in an undefined order, where one or more order possibilities leads to incorrect behavior.
 
-non-atomicity a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior in other tasks.
+non-atomicity - a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior in other tasks.
 
-deadlock interdependent tasks that are *blocking* (that is, waiting) for data or signal from eachother are mutually unable to make progress.
+deadlock - interdependent tasks that are *blocking* (that is, waiting) for data or signal from eachother are mutually unable to make progress.
 
 ----
 
@@ -133,7 +133,9 @@ As an extreme example, note that if we use a common mutex to synchronize the ent
 
 Now, that was indeed an extreme and contrived example, but we can see that in less extreme cases, it behaves the same way - the more synchronization we introduce in our tasks the more they end up waiting around, and the more we *reduce the degree of effective concurrency*
 
-In this way, synchronization is more of a *workaround* for concurrency than a safe pattern of concurrency, and the more we use synchronization the more we will lose the benefits concurrency gives us.
+Stepping back a bit, yes, that's obviously what we *want* to do - to impose a few specific restrictions on the order of events so we can ensure correctness, but leaving the rest of the order up to random chance - however, using synchronization reduces concurrency in *such a way that* it makes *waiting for access* to things a central part of our concurrency, and that comes up against our earlier goal of efficiency - we want to keep things moving as much as possible - we want to avoid idle tasks when there is still more work to be done.
+
+So, this puts us in the unfortunate situation where the more we use synchronization the more we will lose the benefits concurrency gives us - synchronization may be fine in small doses, but if we lean on it as a crutch and use it as our go-to concurrency mechanism in our applications, our performance will suffer.
 
 A familiar example of over-synchronization is the Global Interpreter Lock (or GIL) found in the reference implementation of Ruby, in which *almost* all of the operations of the interpreter are synchronized by a single global lock, which severely reduces the actual concurrency that is possible using Ruby Threads - it's worth noting that the competing Ruby implementations, Rubinius and JRuby, improve on this strategy by using many fine-grained locks instead of one single global lock, so that some operations may be concurrent with some others - because they're not contending with the same lock.
 

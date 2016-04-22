@@ -105,6 +105,8 @@ Synchronized operations become non-concurrent
 
 More synchronization => less concurrency
 
+More synchronization => more waiting
+
 ----
 
 ## Synchronization
