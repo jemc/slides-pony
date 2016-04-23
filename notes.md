@@ -391,7 +391,7 @@ Functional languages eschew objects because they aren't referentially transparen
 
 However, in Pony, we can get *many* of the same benefits using objects because both the humans and the tools reading the code have complete information about how our object reference graphs are structured, *including* the concurrency patterns each part of the graph is restricted to.
 
-Now, if you're heavily into the functional programming paradigm, this slide probably didn't convince you to embrace objects again. But that's okay, because you can write functions in Pony too - essentially they're methods on a what Pony calls a "primitive", where the receiver is an object that has no state and is not allocated - so, not really an object at all in the traditional sense.
+Now, if you're heavily into the functional programming paradigm, this slide probably didn't convince you to embrace objects again. But that's okay, because you can write functional code in Pony too - we have lambdas, we have immutability, we have tail recursion, we have higher-order functions like map and fold, and a lot of other features that should make you feel right at home as a functional programmer - in fact, many Pony objects are what we call "primitives" which are not allocated and hold no state, so they're really more like modules than objects in the traditional sense - as it turns out, each Pony lambda is converted by the compiler to an anonymous primitive type by default, so those are also not dynamically allocated, and they hold no state.
 
 ----
 
