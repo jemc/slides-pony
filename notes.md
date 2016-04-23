@@ -342,7 +342,7 @@ Furthermore, the way we show our intent should be ubiquitous and uniform, with a
 
 So, before we get too ahead of ourselves, I wanted to give a quick disclaimer.
 
-Pony is an emerging technology - it's a young language that's changing every day - it's not yet mature, but it's also not theoretical - it's a real language with a real compiler and runtime, and it's ready to run real applications.
+Pony is an emerging technology - it's a young language that's changing every day - it's not yet mature, but it's also not theoretical - it's a real language with a real compiler and runtime, and it's even being used in some commercial applications in the financial sector and elsewhere.
 
 Pony was designed and created by a handful of academic folks in England who have given it a really solid foundation - if you're as interested as I was in how this all works, you can read the academic papers online and get into the proofs and details.
 
