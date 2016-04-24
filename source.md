@@ -1,8 +1,4 @@
 
-![LFNW-start](http://i.imgur.com/oAfZSvL.png)
-
----
-
 ![Pony](img/horse.png)
 
 # Pony
@@ -921,7 +917,3 @@ Ref caps have no runtime cost!
 ---
 
 # Questions?
-
----
-
-![LFNW-finish](http://i.imgur.com/9eAtxdp.png)

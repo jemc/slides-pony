@@ -1,8 +1,4 @@
 
-![LFNW-start](http://i.imgur.com/oAfZSvL.png)
-
----
-
 ![Pony](img/horse.png)
 
 # Pony
@@ -771,7 +767,3 @@ The other runtime cost you avoid is the cost of synchronization - again, Pony is
 ---
 
 # Questions?
-
----
-
-![LFNW-finish](http://i.imgur.com/9eAtxdp.png)
