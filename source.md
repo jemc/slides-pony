@@ -89,9 +89,9 @@ Non-determinism in the order of events
 
 Can lead to subtle bugs:
 
-* data race %% data race - one or more tasks access the same data in an undefined order, where one or more order possibilities leads to incorrect behavior.
+* data race %% data race - one or more tasks access the same data in an undefined order, where some of those order possibilities leads to incorrect behavior.
 
-* non-atomicity %% non-atomicity - a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior in other tasks.
+* non-atomicity %% non-atomicity - a conceptually atomic operation in one task is interrupted by another task, where the "middle" state that was not considered by the programmer leads to incorrect behavior.
 
 * deadlock %% deadlock - interdependent tasks that are *blocking* (that is, waiting) for data or signal from eachother are mutually unable to make progress.
 
@@ -133,7 +133,9 @@ Blocks the task instead of violating the restriction
 
 %% Effectively, these primitives force the tasks to *wait* (or *block*) for availability where they would otherwise plunge ahead and violate the given restrictions.
 
-%% If planned appropriately and effectively, these restrictions can prevent the kinds of concurrency bugs we highlighted.
+%% Typically, a lock is conceptualized as something that you *acquire* before you do some work, then *release* when you're done. If you, as a task, are ready to do that work, and some other task is "holding" the lock, you wait around, idle - you can't do your work until the other task releases the lock to you. And if there are lots of other tasks of waiting for the same lock, you may be waiting quite a while before you get your turn.
+
+%% But, if planned appropriately and effectively, these restrictions *can* prevent the kinds of concurrency bugs we highlighted.
 
 %% However, let's take another look at what synchronization is actually doing to our applications.
 
@@ -151,7 +153,7 @@ Synchronized operations become non-concurrent
 
 %% So, we see that synchronization works by allowing us to selectively *prevent concurrency* of certain operations.
 
-%% As an extreme example, note that if we use a common mutex to synchronize the entire block of code for each concurrent task - so they're all using the same single global lock, and the entire tasks are synchronized - effectively, at this point there is no concurrency left at all - the mutex will force our tasks to be run sequentially instead of concurrently.
+%% As an extreme example, note that if we use a common lock to synchronize the entire block of code for each concurrent task - so they're all using the same single global lock, and the entire tasks are synchronized - effectively, at this point there is no concurrency left at all - the lock will force our tasks to be run sequentially instead of concurrently.
 
 %% Now, that was indeed an extreme and contrived example, but we can see that in less extreme cases, it behaves the same way - the more synchronization we introduce in our tasks the more they end up waiting around, and the more we *reduce the degree of effective concurrency*
 
@@ -161,7 +163,7 @@ More synchronization => less concurrency
 
 More synchronization => more waiting
 
-%% So, this puts us in the unfortunate situation where the more we use synchronization the more we will lose the benefits concurrency gives us - synchronization may be fine in small doses, but if we lean on it as a crutch and use it as our go-to concurrency mechanism in our applications, our performance will suffer.
+%% So, this puts us in the unfortunate situation where the more we use synchronization the more we will lose the benefits concurrency gives us - synchronization may be fine in small doses, but if we lean on it as a crutch and use it as our go-to concurrency safety mechanism in our applications, our performance will suffer.
 
 %% A familiar example of over-synchronization is the Global Interpreter Lock (or GIL) found in the reference implementation of Ruby, in which *almost* all of the operations of the interpreter are synchronized by a single global lock, which severely reduces the actual concurrency that is possible using Ruby Threads - it's worth noting that the competing Ruby implementations, Rubinius and JRuby, improve on this strategy by using many fine-grained locks instead of one single global lock, so that some operations may be concurrent with some others - because they're not contending with the same lock.
 
@@ -179,7 +181,7 @@ Lose as little concurrency as possible by being precise
 
 More precise synchronization => more cognitive complexity
 
-%% In essence, the more precisely we use synchronization (the finer-grained locks we use), the more difficult it becomes to reason about possible outcomes and the more likely we are to cause or fail to prevent concurrency bugs
+%% In essence, the more precisely we use synchronization (the finer-grained locks we use), the more difficult it becomes to reason about possible outcomes and the more likely we are to cause or fail to prevent concurrency bugs.
 
 Mo' concurrency => mo' problems
 
@@ -329,6 +331,7 @@ So let's share it indirectly, *across time*.
 * easy to reason about
 * no mutability restrictions
 * compatible with zero-copy optimizations
+%% for example, I can accept a byte buffer from a network socket, make some modifications to it, and pass it to the next task, which may also make some modifications, and keep passing it til the end of my processing chain, all without copying the data (which is nice to avoid, because it can be a real performance killer if the byte buffer is large)
 
 ----
 
@@ -355,9 +358,9 @@ So let's share it indirectly, *across time*.
 
 %% Each of these paradigms has its advantages and disadvantages, and they each have their place in our applications - so why should we have to choose?
 
-%% However, remember that Synchronization was not a safe pattern for concurrency, but rather a *workaround*, a way to *reduce* concurrency where we needed to - the other options are sort of workarounds as well, each in their own way, but note that none of them require waiting around for access to shared state, which Synchronization does.
+%% However, we do want to avoid *traditional* synchronization primitives because of that performance vs reasoning tradeoff we discussed earlier.
 
-%% We want to maximize concurrency, so let's leave Synchronization behind for now, and see if we can create our applications without it.
+%% We'll still have some patterns that are *analogous* to synchronization, in that they'll provide a way to make mutually exclusive access to some state, but we're going to construct these patterns with careful intent to avoid making *waiting* a central part of our solution.
 
 ----
 
@@ -365,7 +368,7 @@ So let's share it indirectly, *across time*.
 
 Easy to use the safe patterns
 
-%% We want to use tools and conventions that make these safe patterns easy to use - programmers are lazy, so we have to make it easy to do the right thing or we'll mostly choose to do the wrong thing.
+%% We want to use tools and conventions that make these safe patterns easy to use - programmers are lazy, so we have to make it easier to do the right thing or we'll mostly choose to do the wrong thing. Some people call this "falling into the pit of success".
 
 Verify safety by verifying the patterns
 
@@ -387,24 +390,11 @@ Clean, consistent syntax and rules
 ### A Language for Provably Safe
 ### Lockless Concurrency
 
-http://www.ponylang.org/
+Pony website: http://www.ponylang.org/
 
-https://github.com/ponylang/ponyc
+Pony on GitHub: https://github.com/ponylang/ponyc
 
-----
-
-## Enter Pony
-### A Young Language
-
-%% So, before we get too ahead of ourselves, I wanted to give a quick disclaimer.
-
-%% Pony is an emerging technology - it's a young language that's changing every day - it's not yet mature, but it's also not theoretical - it's a real language with a real compiler and runtime, and it's even being used in some commercial applications in the financial sector and elsewhere.
-
-%% Pony was designed and created by a handful of academic folks in England who have given it a really solid foundation - if you're as interested as I was in how this all works, you can read the academic papers online and get into the proofs and details.
-
-%% I started learning Pony about a year ago after reading the paper on Pony's message-passing per-actor garbage collector, which got me interested enough to give the language a try. Since then I've been writing libraries and helping others learn to use Pony. Recently I was asked to join the core team to help guide the future of the language and the community.
-
-%% To me, this is a really exciting time to be involved with this language.
+%% Pony is a programming language that was built with exactly these goals in mind. It was built to empower you to have an explicit and elevated dialogue with the compiler about the concurrency patterns in your program, so that you and the compiler can work *together* to prove that the way you're using concurrency is safe.
 
 ----
 
@@ -415,7 +405,7 @@ Static analysis enforces concurrency patterns
 
 Understands your application without running it
 
-%% Pony is a static, compiled language. The compiler is the tool that statically analyzes and enforces the safe concurrency patterns we've been talking about - in case you're not familiar, "static" just means that it doesn't have to run your code to understand it.
+%% So, as I mentioned, Pony is a static, compiled language. The compiler is the tool that statically analyzes and enforces the safe concurrency patterns we've been talking about - in case you're not familiar, "static" just means that it doesn't have to run your code to understand it.
 
 Concurrency safety without cost of runtime checks
 
@@ -425,51 +415,22 @@ Concurrency safety without cost of runtime checks
 
 High performance
 
-%% In terms of performance, Pony code should be comparable to code written in C or C++, since it compiles down to a minimal LLVM representation that looks a lot like what you might see produced by the `clang` compiler (which compiles C and C++ code using LLVM).
+%% In terms of performance, Pony code should be comparable to code written in C, C++ or Rust, since it compiles down to a minimal LLVM representation that looks a lot like what you might see produced by the `clang` compiler (which compiles C and C++ code using LLVM).
 
 ----
 
 ## Enter Pony
-### A Type-Safe Language
+### A Strongly-Typed Language
 
-%% Type safety is also part of Pony's static analysis.
+%% Pony is a strongly-typed language, and verifying type safety is part of the static analysis that the compiler does - all references in your program must have an explicit (or inferred) type, and the types in your program have well-defined subtyping relationships to eachother.
 
-Yeah, I know, `*`*groan*`*`
+%% Now, some of you may groan a little bit here, and I definitely groaned about this at one time, as I was totally comfortable writing robust code in a "type-less" language like Ruby or Python, and I had often argued that *strongly typed* languages usually create more hassle for the programmer than they solve real problems.
 
-%% Now, like perhaps some of you, I groan a little bit here, because I am totally comfortable writing robust code in a "type-less" language like Ruby or Python, and I've often argued that *type-safe* languages usually create more hassle for the programmer than they solve real problems.
-
-But concurrency safety makes it worthwhile
+And concurrency is part of the type system!
 
 %% However, in Pony, the concurrency patterns we've been talking about are *part of the type system*. This is a big deal because while it's pretty easy to intuitively understand and reason about what *types* of objects you're dealing with in each part of a well-written application, it can be much harder to understand and reason about how those objects might be accessed concurrently, and having those assumptions be implicit means that you or others will inevitably get confused at some point as to what's going on and who can access what and whether waiting for a lock is needed.
 
-Some nice syntax sugar makes it "not so bad"
-
-%% In this case, since we're already doing a lot of static analysis to ensure concurrency safety, I think it's reasonable and helpful to go for type safety as well, and Pony does a pretty good job of not making this too much of a headache for the programmer.
-
-----
-
-## Enter Pony
-### An Object-Oriented Language
-
-%% Pony is object-oriented.
-
-Functional programming languages are cool,
-
-%% Now, as concurrency becomes more and more important in our applications, a lot of people are turning to functional languages to solve these problems we've been talking about - usually with a focus on immutable data structures.
-
-But objects are nice and natural abstractions
-
-%% Functionally pure languages can be quite satisfying to work with, but if you're like me, you start to miss the convenient abstraction of objects. There's a good reason for this - objects and interfaces are really very natural abstractions for mirroring how humans think about solving problems - well, maybe not *mathematicians*, but they're a special case of human, I think - most of us tend to think in terms of objects, and there's something to be said for making our code look more like our thoughts.
-
-%% Functional languages eschew objects because they aren't referentially transparent, making it difficult to enforce safe patterns.
-
-In Pony we can have them *and keep* many benefits of FP
-
-%% However, in Pony, we can get *many* of the same benefits using objects because both the humans and the tools reading the code have complete information about how our object reference graphs are structured, *including* the concurrency patterns each part of the graph is restricted to.
-
-And you can still use functions when it makes sense
-
-%% Now, if you're heavily into the functional programming paradigm, this slide probably didn't convince you to embrace objects again. But that's okay, because you can write functional code in Pony too - we have lambdas, we have immutability, we have tail recursion, we have higher-order functions like map and fold, and a lot of other features that should make you feel right at home as a functional programmer - in fact, many Pony objects are what we call "primitives" which are not allocated and hold no state, so they're really more like modules than objects in the traditional sense - as it turns out, each Pony lambda is converted by the compiler to an anonymous primitive type by default, so those are also not dynamically allocated, and they hold no state.
+%% This is what ultimately sold me on embracing Pony's strongly-typed approach - the safe concurrency pattern enforcement that forms the core value proposition of the language *couldn't exist* without the compiler having the information it gets from strong typing - in Pony, the concurrency access pattern for every reference is *part of its type*.
 
 ----
 
@@ -478,7 +439,7 @@ And you can still use functions when it makes sense
 
 %% Pony is an actor language.
 
-%% This means that instead of expressing concurrency in terms of explicit threads, fibers, processes, or co-routines, we use a higher-level (and more object-oriented) abstraction called actors.
+%% This means that instead of expressing concurrency in terms of explicit threads, fibers, processes, or co-routines, we use a higher-level abstraction called actors.
 
 Pass messages, trigger behaviours
 
@@ -486,15 +447,21 @@ Pass messages, trigger behaviours
 
 Messages have causal order, not sequential order
 
-%% Essentially, when we think about actors, we shift our paradigm from thinking about sequences of actions and instead think our program in terms of causes and effects - forcing ourselves into this paradigm shift in turn makes it easy for the runtime scheduler to execute tasks in parallel - more broadly, any task can be scheduled to execute at any time, *provided that* the effect does not precede the cause - this is the rule the Pony runtime works under - we call this "causal message order", and I want to come back to this topic in a later slide, because it's a bit more important than it might sound on the surface.
+%% Essentially, when we think about actors, we shift our paradigm from thinking about sequences of actions and instead think our program in terms of causes and effects - forcing ourselves into this paradigm shift in turn makes it easy for the runtime scheduler to execute tasks in parallel - more broadly, any task can be scheduled to execute at any time, *provided that* the effect does not precede the cause - this is the rule the Pony runtime works under - we call this "causal message order".
+
+%% I don't want to get too deep into causal message order here because our time is limited, but suffice to say that Pony's causal message order actually provides a stronger order guarantee than other actor languages like Erlang - messages originating from the same source to the same destination that have a well-defined causal order are guaranteed to arrive at their destination in the same order. So, if my logger is an actor, and writing to the log is asynchronous, I can fire off multiple log messages originating the same actor, and know that they won't arrive out of order (though they may be interleaved with messages originating from other actors). This turns out to also be a *really* useful guarantee for user applications, eliminating a whole class of common concurrency mistakes.
+
+%% But it isn't just a nice feature that the creators of Pony decided to include to make Pony programmers' lives easier - this type of causal message ordering is actually critical to the way the Pony garbage collector works - Pony has a per-actor garbage collector with *no* "stop the world" step - it uses message passing to track references across actor boundaries and the garbage collector protocol hinges on the causality of message order - if you're interested in reading more about how the garbage collector works, as I mentioned before, there's an academic paper about it you can find on the Pony web site.
 
 Scheduled by the runtime
 
-%% Again, we give these actor declarations to the Pony compiler, defining their *behavior* for receiving each kind of message they can handle - and then, in the Pony runtime - the execution of the program is just the unfolding of these messages over time from initial conditions, and from external input. The runtime takes care of scheduling execution in an efficient way (using a "work stealing" algorithm) over a fixed number of system threads (usually equal to the number of cores on your machine), so you never have to worry about spinning up your own threads, or anything like that.
+%% So, we give actor declarations to the Pony compiler, defining their *behavior* for receiving each kind of message they can handle - and then, in the Pony runtime - the execution of the program is just the unfolding of these messages over time from initial conditions, and from external input. The runtime takes care of scheduling execution in an efficient way (using a "work stealing" algorithm) over a fixed number of system threads (by default, equal to the number of cores on your machine), so you never have to worry about spinning up your own threads, or anything like that.
 
 No synchronization primitives (lockless)
 
-%% So, coming back to locks - because our actors follow the safe concurrency patterns that we've been discussing, there's no need for any synchronization - and indeed there are no synchronization primitives in Pony - Pony applications are lockless by nature.
+%% So, coming back to locks - because our actors follow the safe concurrency patterns that we've been discussing, there's no need for any synchronization primitives in Pony - Pony applications are lockless by nature.
+
+%% In a way, the actor is *sort of* a synchronization primitives in that it has exclusive to its own state. However, an actor only accepts asynchronous messages to cause reads or writes to that state, so we've set up our paradigm to promote access without waiting.
 
 No blocking operations
 
@@ -511,7 +478,7 @@ No blocking operations
 
 Blocking is an anti-pattern
 
-%% As I mentioned in the last slide, blocking in Pony is an anti-pattern. In fact, it's not even possible unless you're using the *FFI* to call some native function that might block.
+%% As I mentioned in the last slide, blocking in Pony is an anti-pattern. In fact, it's not even possible unless you're using *FFI* to call some native function that might block.
 
 %% Some other actor-oriented languages include a *blocking receive* feature - that is, they have a way to *wait* for a specific response from another actor (or perhaps, a timeout event if this response doesn't come within some expected period of time) - Pony doesn't have this, but it's often requested by users coming from other languages - so what gives?
 
@@ -521,7 +488,7 @@ If we allowed blocking it would either:
 
 * make our actor behaviours non-atomic (and accumulate memory)
 
-%% Well, such a feature is usually implemented in one of two ways - the most straightforward way is to just let the actor block, preventing it from handling any more messages while it's tied up and waiting for that *one* special message (which again, may never arrive or may take arbitrarily long to arrive) - this means your actor may spend a lot of time idle when in fact there are more messages for it and more work to do - in fact, this makes our actors start to look a lot like synchronization primitives, which is what we were *trying* to get rid of with this system.
+%% Well, such a feature is usually implemented in one of two ways - the most straightforward way is to just let the actor block, preventing it from handling any more messages while it's tied up and waiting for that *one* special message (which again, may never arrive or may take arbitrarily long to arrive) - this means your actor may spend a lot of time idle when in fact there are more messages for it and more work to do - in fact, this makes our actors start to look a lot like traditional synchronization primitives, which is what we were *trying* to get rid of with this system.
 
 %% So, this obviously isn't ideal, and there's a slightly more clever way to do this - while we wait for this actor to receive that *one* special message (and then take some arbitrary followup action based on the result), we *allow* that actor to handle *other* incoming messages as well, each according to their appropriate behavior - essentially, this means we capture a bit of state that holds the info about what message we're waiting for and what we're going to do when we get it, and then every time a message comes in we compare it to that list of special messages that we're waiting for and see if we can find a match - if we do, we can finish the corresponding followup action and clear out that bit of state - otherwise, the message is one that we have a defined behaviour for, and we just execute that behavior.
 
@@ -534,157 +501,6 @@ We choose never-idle, always atomic.
 %% This brings up another critical point about concurrent programming - any time you try to hide the asynchronous nature of it - to make the asynchronous appear synchronous - you disguise the truth and prevent the critical thinking required to make good decisions - it's like going through a store and tearing off all the price tags, to the point that you can't tell which items are costly and which ones are cheap - we want simplicity, but we don't want to get it by just sweeping the complexity under the rug - we want to distill the essence of the problem and bring it to the surface, where we can make smart choices about how to solve it - and that's what we try to do with concurrent programming in Pony - we don't make the costly appear cheap, we don't make the risky appear safe, and we *don't* make the asynchronous appear synchronous.
 
 We choose to never make the asynchronous appear synchronous.
-
-----
-
-## Pony Paradigms
-### Causality
-
-%% As we started talking about near the end of the last slide, our goal should be to find the essence of a problem and shift our paradigm to focusing on that - so what paradigms do we need to revise when we're thinking about concurrency?
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forget total order, embrace causal order
-
-<code>
-```ruby
-.     (events over time)     .
-<-- A ---- B ---- C ---- D -->
-```
-</code>
-
-%% Well, one paradigm that needs some adjustment is our basic conception of time and the order of events - when we think about events happening over time, we often think about them happening on a single timeline - that is, event A happens at this point on the timeline, then event B happens, then event C, then D, and so on - looking at this diagram, try to think about these events like beads on an abacus - I can slide them back and forth, but because they're on the same timeline and I can't "slide them" past eachother, A will always come before B, and so on - we have events sorted into this total order, and it's all very definite and clear-cut and we can easily trace our way through the timeline - however, if we want concurrency, this turns out to be a bit *too* definite and clear-cut.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forget total order, embrace causal order
-
-<code>
-```ruby
-<---- A --------------------->
-.                            .
-<--------------------- B ---->
-.                            .
-<---------------- C --------->
-.                            .
-<-- D ----------------------->
-```
-</code>
-
-%% Going back to my proposed definition of concurrency from the first slide - I said "Concurrency is having multiple tasks that are being executed in a disjoint, overlapping way." - I also said that the "relative order of execution is unknown" - so, we introduce concurrency to our program, and all of a sudden our one timeline becomes four timelines - and by chance, maybe event D now happens first, then perhaps A, then C, then B - each one of the events is now happening on its own timeline, and can be slid back and forth freely on the timeline based on arbitrary circumstances that we have no control over or knowledge of - and now they can "slide past eachother" there is no longer any definite total order of events - everything is happening at once - that's concurrency.
-
-%% In some cases, this is just fine - if our tasks don't depend on eachother, then we don't really care about the order of events - with no interdependency, any order of execution still gives a correct program - but what if some of our tasks *do* depend on eachother?  If we can't have a *total order*, we *at least* want to have some way to mark these dependencies and guarantee, for example that A happens before B, and C happens before D.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Effects follow causes
-
-<code>
-```ruby
-<---- A --------------------->
-.      \                     .
-<------ B ------------------->
-.                            .
-<---------------- C --------->
-.                  \         .
-<------------------ D ------->
-```
-</code>
-
-%% Well, this is where *causality* comes in - the rule that, in the time dimension, causes must happen before their effects, or that effects follow their causes - this definition of causality comes from physics, but it's also a very natural, even obvious conclusion for us to come to - if me dropping a bowling ball caused my foot to get hurt, then I must have dropped the ball before I felt the pain - if these events happened in the opposite order (I felt the pain, then I dropped the ball), you wouldn't let me say that dropping the ball *caused* the pain - that wouldn't make any sense - so thinking about this in another way, if we can make it so that event A *causes* event B, that causality means that A is guaranteed to happen before B, which is exactly what we want.
-
-%% So, going back to relativistic physics for a moment, this notion of causality is very much related to the speed of light - that is, for one event in one part of a universe to be the cause of an event in a some far distant part of the universe, the effect can happen no sooner than the time it takes to send a "message" at the speed of light from the location of the cause to the location of that effect - so, let's take a cue from the universe and use the same mechanism to introduce causality in our programs - that is, let's send a message from one actor to another at the speed of light (or as close we can get on our particular hardware) - when that message from actor A reaches actor B, actor B *knows* that event A has already happened, and it can proceed with executing event B, knowing that our constraint of A happening before B has been fulfilled - moreover, conceptually, this is as soon as actor B could possibly know this - so we're not wasting any time here.
-
-%% So, just by using actors and passing messages between them we get this basic kind of causality "for free" - we just have to remember to use message passing to denote causality wherever the order of events is important to us.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    \    \                  .
-<---- LA - \ ----- LB ------->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-%% The simple causality of message passing isn't always nice enough to make our programs behave in a easy-to-reason-about way, though - in fact, it still leaves us open to a whole class of application-level race conditions.
-
-%% Consider the simple example of two actors, A and B, and a third actor L, which happens to handle logging the results of the work of A and B - so, A will send a message to L to log its results, then send a message to B to signal it to do its own work - similarly, B logs its own results to the logger - intuitively, we'd expect actor L to log the results of A, then at some time later log the results of B, as shown in this diagram.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality, breaks down
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    ^~~~~\~~~~~~~~~~~~~~,   .
-<--------- \ ----- LB -- LA ->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-%% However, under simple message passing causality, this is not guaranteed - what if for some reason, actor A's message to actor L took a *really long time* to arrive, as shown by the squiggly line in *this* diagram?  It might arrive *after* actor *B's* message to actor L, so that actor L would log the results of B *before* logging the results of A, which totally goes against our intuitive understanding of time, since we know that A was guaranteed to happen before B.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Single chain of message passing, but weird code
-
-<code>
-```ruby
-<------- A2 ---------------->
-.         \                 .
-<-------- LA --- LB -------->
-.          \     /          .
-<--------- B1***B2 --------->
-```
-</code>
-
-%% In order to fix this problem using simple message passing causality, we'd have to do something like make sure that our message from A to L would cause a message from L to B, then B would send a message back to L - this gets us the order we want, but it makes for a pretty weird program - I do some work, send a message to my logger, then my logger tells some other actor to do some work - we've achieved an intuitive order of events, but our code is no longer organized in an intuitive way - it's not a great solution.
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality, enforced in Pony
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    \    \                  .
-<---- LA - \ ----- LB ------->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-%% However, it turns out that we don't need to go to such lengths because the Pony runtime can also guarantee *this* type of causality - so we write our code in the intuitive way, assuming that the Pony runtime will take care of scheduling events in such a way that causality will hold, even in this forked case.
-
-%% This isn't just a nice feature that the creators of Pony decided to include to make Pony programmers' lives easier - this type of causal message ordering is actually critical to the way the Pony garbage collector works - Pony has a per-actor garbage collector that uses message passing to track references across actor boundaries - and the garbage collector protocol hinges on the causality of message order - if you're interested in reading more about how the garbage collector works, as I mentioned before, there's an academic paper about it you can find on the Pony web site.
 
 ----
 
@@ -705,10 +521,6 @@ Principle of least privilege
 
 %% To describe another car example, let's say I want my son to go bring in the rest of the groceries from the car while I start making dinner - I don't necessarily want to grant him the authority to drive the car, so maybe I give him the key that only opens the car door, but withold the key that starts the engine - if my mischevious son is somehow able to make a copy of the key (I don't know, let's say the neighbor kid's dad is a locksmith, and my son runs over their quickly and makes a copy key for both him and his buddy), then he (and the neighbor kid) now have the capability to open my car doors whenever they want, but at least they can't take the car for a joy ride - this is called the principle of least privilege - I give out capability tokens with just enough authority to do the task at hand, and no more - this way, I minimize the overall risk of a trusted delegation "leaking" into an untrusted one.
 
-Tokens are revocable
-
-%% Minimizing the effect of leaked delegation are nice, but if things get out of hand I want the ability to revoke the tokens - going back to the son-and-the-neighbor-kid car example, when I found out what's going on, I'd probably want revoke access for my son and the neighbor kid - I can probably compel my son, and maybe even the neighbor kid to give me the extra keys back, but if I don't trust the neighbor kid, I can't be sure that he didn't make more copies and distribute them to other mischevious kids all over town - if I'm sufficiently worried about this, I may go to the trouble of changing the locks on my car doors - after doing so, all of the hypothetical keys floating around in the neighborhood become useless, and I can finally sleep with the peace of mind that I won't return to my car to find yet another whoopie-cushion on the seat - as in this example, most capability security systems provide a way to revoke capability tokens, making them useless to anyone who made a copy.
-
 ----
 
 ## Pony Paradigms
@@ -724,11 +536,7 @@ Object references are unforgable
 
 Object references can be attenuated
 
-%% Pony provides some patterns to attenuate object references to allow less or deny more than the original reference - there are several ways in which this can be done, and the exact mechanics are a bit outside the scope of this talk, but suffice to say that if I have an object reference that I can use to do X, Y, and Z, I have ways to pass an object reference to someone else that they can only use to do X and Y, but not Z - the ability to attenuate is crucial both to following the principle of least privilege, and in some cases, to withold the ability to revoke authority.
-
----
-
-## Pony Concepts
+%% Pony provides some patterns to attenuate object references to allow less or deny more than the original reference - there are several ways in which this can be done, and the exact mechanics are a bit outside the scope of this talk, but suffice to say that if I have an object reference that I can use to do X, Y, and Z, I have ways to pass an object reference to someone else that they can only use to do X and Y, but not Z - the ability to attenuate is crucial both to following the principle of least privilege.
 
 ----
 
@@ -750,11 +558,15 @@ class Person
     end
 ```
 
-%% Here we have a class, with all of the typical basic features you'd expect of an object-oriented language - our class has some fields (`name` and `age`), as well as some methods (`greeting` and `age_diff`).
+%% So, let's finally take a look at some basic syntax for the language.
 
-%% You'll note that each field has an explicit type - `name` is always a `String`, and `age` is always a `U8`, which is short for "unsigned 8-bit integer".
+%% Here we have a class, defined in a way you should find familiar from other object-oriented languages. Now, if you're a die-hard functional programming advocate and the fact that I just said "object" has you looking for the door, just try to keep an open mind and disassociate from the baggage you typically associate with classes and objects - Pony mixes concepts from both object-oriented programming and functional programming in a powerful and practical way, and this is made possible by its unique type system. We'll describe that system in detail in a few slides, so please stick with me.
 
-%% Each method also has a return type - `greeting` returns a `String` and `age_diff` returns a `U8` - like in some other languages, the final expression of the method is implicitly used as the return value - and also note that branching expressions, like the `if`/`then`/`else` block in `age_diff`, also have a value - it's whatever the value of the final expression in the executed branch is - sometimes methods have no return value, and those can be said to return type `None`, which will be added implicitly to the end of the function if you don't given an explicit return value and return type.
+%% So our class is called `Person`, and it has some fields (`name` and `age`), as well as some methods (`greeting` and `age_diff`).
+
+%% You'll note that each field has an explicit type - `name` is a `String`, and `age` is a `U8`, which is short for "unsigned 8-bit integer".
+
+%% Each method also has a return type - `greeting` returns a `String` and `age_diff` returns a `U8` - like in some other languages, the final expression of the method is implicitly used as the return value - and also note that branching expressions, like the `if`/`then`/`else` block in `age_diff`, also have a value - it's whatever the value of the final expression in the executed branch is - sometimes methods conceptually have no return value, and those can be said to return the type called `None`, which will be added implicitly to the end of the function if you don't given an explicit return value and return type.
 
 %% You'll see that the `age_diff` method also accepts an argument called `that`, which is of the `Person` type - because the keyword `this` is used to refer to the current receiver, just like in C++, `that` is a common Pony idiom for referring to another object of the same type.
 
@@ -775,7 +587,7 @@ b = a          // COMPILER ERROR - can't reassign a let reference
 
 %% Here, we create three references, two `let` references and one `var` reference - each referencing a unique new Person object - we can just say `Person` here, because referring to a type where a value is expected will implicitly call `Person.create()`, which is the name of the default constructor.
 
-%% On the fourth line, we can reassign the `var` reference named `c` to be an alias of `a` - we essentially throw away that third `Person` object, and not both `a` and `c` refer to the same `Person`.
+%% On the fourth line, we can reassign the `var` reference named `c` to be an alias of `a` - we essentially throw away that third `Person` object, and now both `a` and `c` refer to the same `Person`.
 
 %% We *cannot*, however, on the fifth line, reassign the `let` reference named `b` - a `let` can only be assigned once. This should be a familiar concept to Javascript folks.
 
@@ -790,11 +602,13 @@ b = a          // COMPILER ERROR - can't reassign a let reference
 | Share Immutable State    | `val`     |
 | Transfer Isolated State  | `iso`     |
 
-%% Now that we've seen the basic Pony syntax for some familiar concepts, let's look at how Pony's novel way of representing the concurrency concepts we've been discussing.
+%% Now that we've seen the basic Pony syntax for some familiar concepts, let's look at Pony's novel way of representing the concurrency patterns we've been discussing.
 
-%% Pony uses a short keyword called a *reference capability* to represent each of these concepts.
+%% Pony uses a short keyword called a *reference capability* to represent each of these patterns.
 
-%% Reference capabilities denote various restrictions in how object references may be used. There's the "Share Nothing" pattern, represented as `tag`, the "Share Immutable State" pattern, represented as `val`, and the "Transfer Isolated State" pattern, represented as `iso`.
+%% Reference capabilities denote various restrictions on how object references may be used. There's the "Share Nothing" pattern, represented as `tag`, the "Share Immutable State" pattern, represented as `val`, and the "Transfer Isolated State" pattern, represented as `iso`.
+
+%% The reference capability is *part of the type* of a reference. It also respects the paradigm of capability security in that the read and write restrictions associated with the reference capability of a type can be attenuated to a lower capability, but never escalated to a higher capability. The compiler enforces this as part of the rules of the type system.
 
 ----
 
@@ -818,7 +632,7 @@ b = a          // COMPILER ERROR - can't reassign a let reference
 %% whether *other* references can read or write the object's data,
 %% and whether the reference can be sent in a message to another actor (sendable).
 
-%% A reference capability can only be sendable to another actor if doing so is guaranteed not to allow any data races. This guarantee is the direct result of whether the other constraints are enough to enforce one of the three safe concurrency patterns.
+%% A reference capability can only be sent to another actor if doing so is guaranteed to be safe. This guarantee is the direct result of whether the other constraints are strict enough to constitute one of the three safe concurrency patterns that we discussed. The cardinal rule being enforced here is, "If I can read the data, no other actor can write to it, and vice versa".
 
 %% So let's take a quick look at each reference capability and what it means.
 
@@ -826,9 +640,9 @@ b = a          // COMPILER ERROR - can't reassign a let reference
 
 %% `val` is an immutable reference - it is read-only, *and* it is guaranteed that *no other references exist* that can write to the same object - it's only readable to *you*, and it's only readable to everyone else - thus, it is guaranteed to never change.  This makes it sendable, as it is safe to share concurrently.
 
-%% `box` is a read-only reference - however, it is not immutable because there *may* be *other references* that can write to the object -  so even though *you* can't change the object with this reference, it's possible it could be changed using another reference somewhere else - or it could just so happen that it's *actually* immutable globally, but you just have a `box`, and you don't have any way of knowing what's happening anywhere else.  This means it is not safe to share concurrently and not sendable.
+%% `box` is a read-only reference - however, it is not considered immutable because there *may* be *other references* that can write to the object -  so even though *you* can't change the object with your reference, it's possible it could be changed using another reference somewhere else - or it could just so happen that it *is* actually immutable globally, but you just have a `box`, and you don't have any way of knowing what's happening anywhere else.  This means it is not safe to share concurrently and so it's not sendable.
 
-%% `iso` is an isolated reference - it is read/write-unique, meaning this reference can access the object (read and write), but *no other references exist* anywhere that can access the object at all.  Because only one actor can hold an isolated reference to an object at any given time, no concurrent access is possible, so it is safe to mutate it.  It is sendable, but note that you have an actor must *give up* its isolated reference before it can be sent to another actor.  In fact, because of the uniqueness constraint, you can't alias an isolated reference at all without *downgrading* it to a *different* reference capability without the uniqueness constraint.
+%% `iso` is an isolated reference - it is read/write-unique, meaning this reference can access the object (read and write), but *no other references exist* anywhere that can access the object at all.  Because only one actor can hold an isolated reference to an object at any given time, no concurrent access is possible, so it is safe to mutate it.  It is sendable, but note that an actor must *give up* its isolated reference before it can be sent to another actor.  In fact, because of the uniqueness constraint, you can't alias an isolated reference at all without *downgrading* it to a *different* reference capability without the uniqueness constraint.
 
 %% `trn` is similar to an isolated reference, but it is only write-unique instead of read/write-unique, meaning that other references to the object *can exist*, but none of them can *write* to the object.  It is *not* sendable, because it is still mutable and thus cannot be shared.  `trn` is short for *transitional*, because it is most often used as a way to temporarily mutate an object before converting it to an immutable reference.  You can convert a `trn` to a `val` by giving up the `trn` reference, which was the only one that could write to the object.  By giving up your one reference that can mutate an object, it can become immutable.
 
@@ -867,25 +681,23 @@ class ref Person
 
 %% Here is our earlier example class - notice that we didn't use any reference capabilities in our first rendering of it - that's because we were just using the implicit defaults everywhere.
 
-%% Every type has a default reference capability. If you don't specify a reference capability when you declare a reference, it will use the default capability for that type. The `String` and `U8` types happen to be `val` by default, meaning that they're immutable values.  Note that this doesn't mean you can't assign a different value to the `name` field of a `Person` - it just means that the `String` object itself cannot be changed.
+%% Every type has a default reference capability. If you don't specify a reference capability when you declare a reference, it will use the default capability for that type. The `String` and `U8` types happen to be `val` by default, so they're immutable values.  Note that this doesn't mean you can't assign a different value to the `name` field of a `Person` - it just means that the `String` object itself cannot be changed.
 
 %% The `Person` type has a default reference capability of `ref`, indicating a "normal" mutable reference with no particular restrictions. If you wanted to use a different capability, like `iso`, so that it would be sendable, you would have to specify `Person iso` instead of just `Person`.
 
-%% We also see the `box` reference capability in the definition of the `age_diff` method - this doesn't refer to the arguments or return value, but rather to the `Person` object instance that we're operating on - again, in Pony we refer to the current instance as `this` - when you declare a method but don't specify a reference capability for it, `box` is the assumed default.
+%% We also see the `box` reference capability in the definition of the `age_diff` method - this doesn't refer to the arguments or return value, but rather to the `Person` object instance that we're operating on - again, in Pony we refer to the current instance as `this`, and that's what's used for reading and writing fields of the current object - so, in this case, the `this` reference would have the type `Person box`. When you declare a method but don't specify a reference capability for it, `box` is the assumed default.
 
-%% Remember that the `box` reference capability means that we can only read from it, not write to it - because our view of the `Person` instance is a `box`, this means that we can't change any fields of the `Person` from within the `age_diff` method - this makes sense, because just measuring a `Person` object shouldn't change it - if we wanted to change state from within the method, we'd have to declare it as `fun ref age_diff` instead.
+%% Remember that the `box` reference capability means that we can only read from it, not write to it - because our view of the `Person` instance is a `box`, this means that we can't change any fields of the `Person` from within the `age_diff` method - this makes sense, because just measuring a `Person` object shouldn't change it - if we wanted to change state from within the method, we'd have to declare it as `fun ref` instead.
 
-%% When the compiler knows that the `age_diff` method doesn't modify any state, it can make certain performance optimizations based on that guarantee.
-
-%% An astute viewer might notice that we're also not modifying the *other* `Person` in the `age_diff` method either, so we can actually change that parameter signature to accept a `Person box` instead of a `Person ref`.
+%% An astute viewer might notice that we're also not modifying the *other* `Person` in the `age_diff` method either, so we can actually change that parameter signature to accept a `Person box` for `that` instead of a `Person ref`.
 
 %% From another perspective, declaring as `fun box age_diff` means that we can call this method on any `Person` that we have read access to, not caring whether we have write access or whether anyone else has read or write access.
 
-%% If we were to declare it as `fun ref age_diff`, we would be prevented from calling that method if we didn't have write access to the `Person`.
+%% If we were to declare it as `fun ref`, we would be prevented from calling that method if we didn't have write access to the `Person`.
 
-%% If we were to declare it as `fun val age_diff`, we would be prevented from calling that method if *anyone else* had write access to the `Person`.
+%% If we were to declare it as `fun val`, we would be prevented from calling that method if *anyone else* had write access to the `Person`.
 
-%% If we were to declare it as `fun iso age_diff`, we would be prevented from calling that method if anyone else had *any access* to the `Person`, read *or* write access.
+%% If we were to declare it as `fun iso`, we would be prevented from calling that method if anyone else had *any access* at all to the `Person`.
 
 %% Note that in general, restricting what we can do within the method gives us more freedom in how we can call, and vice versa - this is a common theme with compilers - imposing restrictions actually give you more freedom in other ways.
 
@@ -896,9 +708,9 @@ class ref Person
 ## Pony Concepts
 ### Reference Capabilities Summary
 
-There's more to see, but not today `*`*wink*`*`
+We've only introduced the basics here
 
-%% There's so much more to talk about with the details of how reference capabilities work - the rules for *downgrading* to lower capabilities or *lifting* to higher capabilities - the rules for how capabilities to objects "filter" (or *combine with*) the capabilities of those objects' fields - but I think I've already talked enough for today, so I'll leave the rest of the discovery to those of you who are interested enough to read about it or ask me specific questions.
+%% There's so much more to talk about with the details of how reference capabilities work - the rules for *downgrading* to lower capabilities or *lifting* to higher capabilities - the rules for how capabilities to objects "filter" (or *combine with*) the capabilities of those objects' fields - the rules for generic reference capabilities, used with parameterised types - but our time in this talk is limited, and this should be a good introduction to the concepts. If you're interested in learning more, please check the tutorial on our website, and please ask us questions on our mailing list and in our IRC channel when you get stuck.
 
 There's a learning curve, but it's worth it!
 
@@ -910,10 +722,18 @@ Ref caps bring explicit structure to lockless concurrency
 
 Ref caps have no runtime cost!
 
-%% One of the really powerful benefits of how reference capabilities are implemented in Pony is that they have no runtime cost - there are no safety checks executed in your running application, because it's all proven safe at compile-time - in fact, reference capabilities don't exist at all at runtime - they are compile-time constraints that fall away in the final compiled code.
+%% One of the really powerful benefits of how reference capabilities are implemented in Pony is that they have no runtime cost - there are no safety checks executed in your running application, because it's all proven safe at compile-time - in fact, reference capabilities don't exist at all at runtime - they are compile-time constraints that fall away in the final compiled code. This is sometimes called a "zero-cost abstraction".
 
-%% The other runtime cost you avoid is the cost of synchronization - again, Pony is lockless - so every time your code is accessing data, it doesn't ever have to wait to acquire a lock - the access is already proven to be safe. This means you only spending those precious CPU cycles doing the real work of the application.
+%% The other runtime cost you avoid is the cost of synchronization - again, Pony is lockless - so every time your code is accessing data, it doesn't ever have to wait to acquire a lock - the access is already proven to be safe. This means you're only spending those precious CPU cycles doing the real work of the application.
 
 ---
 
 # Questions?
+
+Pony website: http://www.ponylang.org/
+
+Pony on GitHub: https://github.com/ponylang/ponyc
+
+These slides on GitHub: https://github.com/jemc/slides-pony
+
+---

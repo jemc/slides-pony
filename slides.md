@@ -266,14 +266,9 @@ Clean, consistent syntax and rules
 ### A Language for Provably Safe
 ### Lockless Concurrency
 
-http://www.ponylang.org/
+Pony website: http://www.ponylang.org/
 
-https://github.com/ponylang/ponyc
-
-----
-
-## Enter Pony
-### A Young Language
+Pony on GitHub: https://github.com/ponylang/ponyc
 
 ----
 
@@ -291,26 +286,9 @@ High performance
 ----
 
 ## Enter Pony
-### A Type-Safe Language
+### A Strongly-Typed Language
 
-Yeah, I know, `*`*groan*`*`
-
-But concurrency safety makes it worthwhile
-
-Some nice syntax sugar makes it "not so bad"
-
-----
-
-## Enter Pony
-### An Object-Oriented Language
-
-Functional programming languages are cool,
-
-But objects are nice and natural abstractions
-
-In Pony we can have them *and keep* many benefits of FP
-
-And you can still use functions when it makes sense
+And concurrency is part of the type system!
 
 ----
 
@@ -351,131 +329,6 @@ We choose to never make the asynchronous appear synchronous.
 ----
 
 ## Pony Paradigms
-### Causality
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forget total order, embrace causal order
-
-<code>
-```ruby
-.     (events over time)     .
-<-- A ---- B ---- C ---- D -->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forget total order, embrace causal order
-
-<code>
-```ruby
-<---- A --------------------->
-.                            .
-<--------------------- B ---->
-.                            .
-<---------------- C --------->
-.                            .
-<-- D ----------------------->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Effects follow causes
-
-<code>
-```ruby
-<---- A --------------------->
-.      \                     .
-<------ B ------------------->
-.                            .
-<---------------- C --------->
-.                  \         .
-<------------------ D ------->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    \    \                  .
-<---- LA - \ ----- LB ------->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality, breaks down
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    ^~~~~\~~~~~~~~~~~~~~,   .
-<--------- \ ----- LB -- LA ->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Single chain of message passing, but weird code
-
-<code>
-```ruby
-<------- A2 ---------------->
-.         \                 .
-<-------- LA --- LB -------->
-.          \     /          .
-<--------- B1***B2 --------->
-```
-</code>
-
-----
-
-## Pony Paradigms
-### Causality
-
-Forked message passing causality, enforced in Pony
-
-<code>
-```ruby
-<-- A1***A2 ----------------->
-.    \    \                  .
-<---- LA - \ ----- LB ------->
-.           \     /          .
-<---------- B1***B2 --------->
-```
-</code>
-
-----
-
-## Pony Paradigms
 ### Capability Security
 
 Unforgeable tokens of authority
@@ -483,8 +336,6 @@ Unforgeable tokens of authority
 Authority is inherently decentralized
 
 Principle of least privilege
-
-Tokens are revocable
 
 ----
 
@@ -496,10 +347,6 @@ Object references as capabilities
 Object references are unforgable
 
 Object references can be attenuated
-
----
-
-## Pony Concepts
 
 ----
 
@@ -593,7 +440,7 @@ class ref Person
 ## Pony Concepts
 ### Reference Capabilities Summary
 
-There's more to see, but not today `*`*wink*`*`
+We've only introduced the basics here
 
 There's a learning curve, but it's worth it!
 
@@ -604,3 +451,11 @@ Ref caps have no runtime cost!
 ---
 
 # Questions?
+
+Pony website: http://www.ponylang.org/
+
+Pony on GitHub: https://github.com/ponylang/ponyc
+
+These slides on GitHub: https://github.com/jemc/slides-pony
+
+---
