@@ -9,13 +9,13 @@
 
 ## Who Am I?
 
-![jemc](img/jemc.png) ![cb](img/cb.png)
+![jemc](img/jemc.png) ![cb](img/cb.png) ![cb](img/ponylogo-invert.png)
 
-### Joe Eli McIlvain - Citrusbyte
+### Joe Eli McIlvain - Citrusbyte - Pony Core
 
-https://github.com/jemc - https://citrusbyte.com
+[github.com/jemc](https://github.com/jemc) - [citrusbyte.com](https://citrusbyte.com) - [ponylang.org](https://ponylang.org)
 
-These slides on GitHub: https://github.com/jemc/slides-pony
+These slides on GitHub: [github.com/jemc/slides-pony](https://github.com/jemc/slides-pony)
 
 ---
 
@@ -59,13 +59,7 @@ Running our code in *parallel* can give us:
 
 Non-determinism in the order of events
 
-Can lead to subtle bugs:
-
-* data race
-
-* non-atomicity
-
-* deadlock
+Can lead to subtle bugs
 
 ----
 
@@ -266,9 +260,9 @@ Clean, consistent syntax and rules
 ### A Language for Provably Safe
 ### Lockless Concurrency
 
-Pony website: http://www.ponylang.org/
+Pony website: [ponylang.org](https://ponylang.org)
 
-Pony on GitHub: https://github.com/ponylang/ponyc
+Pony on GitHub: [github.com/ponylang/ponyc](https://github.com/ponylang/ponyc)
 
 ----
 
@@ -299,15 +293,13 @@ Pass messages, trigger behaviours
 
 Messages have causal order, not sequential order
 
-Scheduled by the runtime
+Per-actor garbage collection (no stop-the-world step)
+
+Scheduled by the runtime (work-stealing algorithm)
 
 No synchronization primitives (lockless)
 
 No blocking operations
-
----
-
-## Pony Paradigms
 
 ----
 
@@ -326,29 +318,7 @@ We choose never-idle, always atomic.
 
 We choose to never make the asynchronous appear synchronous.
 
-----
-
-## Pony Paradigms
-### Capability Security
-
-Unforgeable tokens of authority
-
-Authority is inherently decentralized
-
-Principle of least privilege
-
-----
-
-## Pony Paradigms
-### Capability Security
-
-Object references as capabilities
-
-Object references are unforgable
-
-Object references can be attenuated
-
-----
+---
 
 ## Pony Concepts
 ### Basic syntax
@@ -440,22 +410,22 @@ class ref Person
 ## Pony Concepts
 ### Reference Capabilities Summary
 
-We've only introduced the basics here
-
 There's a learning curve, but it's worth it!
 
 Ref caps bring explicit structure to lockless concurrency
 
 Ref caps have no runtime cost!
 
+We've only introduced the basics here
+
 ---
 
-# Questions?
+![Pony](img/horse.png)
 
-Pony website: http://www.ponylang.org/
+Pony website: [ponylang.org](https://www.ponylang.org)
 
-Pony on GitHub: https://github.com/ponylang/ponyc
+Pony on GitHub: [github.com/ponylang/ponyc](https://github.com/ponylang/ponyc)
 
-These slides on GitHub: https://github.com/jemc/slides-pony
+These slides on GitHub: [github.com/jemc/slides-pony](https://github.com/jemc/slides-pony)
 
 ---
