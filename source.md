@@ -9,7 +9,7 @@
 
 ## Who Am I?
 
-![jemc](img/jemc.png) ![cb](img/cb.png) ![cb](img/ponylogo-invert.png)
+![jemc](img/jemc.png) ![cb](img/cb.png) ![pony](img/ponylogo-invert.png)
 
 ### Joe Eli McIlvain - Citrusbyte - Pony Core
 
