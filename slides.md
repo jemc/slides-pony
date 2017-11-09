@@ -109,8 +109,6 @@ More precise synchronization => more concurrency
 
 More precise synchronization => more cognitive complexity
 
-More precise synchronization => more problems
-
 ---
 
 ## Share Nothing

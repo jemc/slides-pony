@@ -181,8 +181,6 @@ More precise synchronization => more cognitive complexity
 
 %% In essence, the more precisely we use synchronization (the finer-grained locks we use), the more difficult it becomes to reason about possible outcomes and the more likely we are to cause or fail to prevent concurrency bugs.
 
-More precise synchronization => more problems
-
 %% Regrettably, using synchronization with concurrency creates a situation where the more performance-optimal our code becomes, the more difficult it becomes to understand and maintain.
 
 %% This is a terrible tradeoff, and grappling with it in this way is one of the main reasons why we're afraid of concurrency.
