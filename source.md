@@ -57,7 +57,7 @@ Relative order of execution is unknown
 
 %% So, why do we want concurrency?
 
-%% Well, it turns out that just prepping our application for concurrency isn't enough to get any *direct* benefits, though as we discussed, it allows our code to be run in a *parallel and/or scheduled* way, and *that* in turn can give us some very important benefits:
+%% Well, it turns out that just prepping our application for concurrency isn't enough to get any *direct* benefits, though as we discussed, it allows our code to be run in *parallel*, and *that* in turn can give us some very important benefits:
 
 Concurrency alone isn't enough, but...
 
@@ -129,7 +129,7 @@ Blocks the task instead of violating the restriction
 
 %% Effectively, these primitives force the tasks to *wait* (or *block*) for availability where they would otherwise plunge ahead and violate the given restrictions.
 
-%% Typically, a lock is conceptualized as something that you *acquire* before you do some work, then *release* when you're done. If you, as a task, are ready to do that work, and some other task is "holding" the lock, you wait around, idle - you can't do your work until the other task releases the lock to you. And if there are lots of other tasks of waiting for the same lock, you may be waiting quite a while before you get your turn.
+%% Typically, a lock is conceptualized as something that you *acquire* before you do some work on some shared state, then *release* when you're done. If you, as a task, are ready to do that work, and some other task is "holding" the lock, you wait around, idle - you can't do your work until the other task releases the lock to you. And if there are lots of other tasks of waiting for the same lock, you may be waiting quite a while before you get your turn.
 
 %% But, if planned appropriately and effectively, these restrictions *can* prevent the kinds of concurrency bugs we highlighted.
 
@@ -149,7 +149,7 @@ Synchronized operations become non-concurrent
 
 %% So, we see that synchronization works by allowing us to selectively *prevent concurrency* of certain operations.
 
-%% As an extreme example, note that if we use a common lock to synchronize the entire block of code for each concurrent task inp program - so they're all using the same single global lock, and the entire tasks are synchronized - effectively, at this point there is no concurrency left at all - the lock will force our tasks to be run sequentially instead of concurrently.
+%% As an extreme example, note that if we use a common lock to synchronize the entire block of code for each concurrent task in a program - so they're all using the same single global lock, and the entire tasks are synchronized - effectively, at this point there is no concurrency left at all - the lock will force our tasks to be run sequentially instead of concurrently.
 
 %% Now, that *was* an extreme and contrived example, but we can see that in less extreme cases, it behaves the same way - the more synchronization we introduce in our tasks the more they end up waiting around, and the more we *reduce the degree of effective concurrency*
 
@@ -159,7 +159,7 @@ More synchronization => less concurrency
 
 More synchronization => more waiting
 
-%% So, this puts us in the unfortunate situation where the more we use synchronization the more we will lose the benefits concurrency gives us - synchronization may be fine in small doses, but if we lean on it as a crutch and use it as our go-to concurrency safety mechanism, our application performance will suffer.
+%% So, this puts us in the unfortunate situation where the more we use synchronization the more we will lose the benefits concurrency gives us - synchronization may be fine in small doses, but if we lean on it as a crutch and use it as our go-to concurrency safety mechanism, our application performance may suffer.
 
 %% A familiar example of over-synchronization is the Global Interpreter Lock (or GIL) found in the reference implementation of Ruby, in which *almost* all of the operations of the interpreter are synchronized by a single global lock, which severely reduces the actual concurrency that is possible using Ruby Threads - it's worth noting that the competing Ruby implementations, Rubinius and JRuby, improve on this strategy by using many fine-grained locks instead of one single global lock, so that some operations may be concurrent with some others - because they're not contending with the same lock.
 
@@ -171,6 +171,8 @@ More synchronization => more waiting
 
 Lose as little concurrency as possible by being precise
 
+More precise synchronization => more concurrency
+
 %% So, to avoid losing too much concurrency to over-synchronization, we want to use synchronization primitives in a precise, detail-oriented way - synchronizing as little as is necessary to be safe - if we go back to our earlier example of Ruby's Global Interpreter Lock and the work in Rubinius and JRuby to separate this locking into more fine-grained locks, this is basically what we're talking about - more precision helps us to keep more opportunities for concurrency while still remaining exclusive where it counts.
 
 %% However, in many cases this work is non-trivial, and even when done, understanding and maintaining it often entails a lot of additional cognitive complexity - thinking about all these locks, the circumstances under which you need to acquire each one, and the circumstances under which the total "interlocking" system might *deadlock* or otherwise behave badly - it gets to be quite a lot for a human (or an automated tool) to reason about.
@@ -179,7 +181,7 @@ More precise synchronization => more cognitive complexity
 
 %% In essence, the more precisely we use synchronization (the finer-grained locks we use), the more difficult it becomes to reason about possible outcomes and the more likely we are to cause or fail to prevent concurrency bugs.
 
-Mo' concurrency => mo' problems
+More precise synchronization => more problems
 
 %% Regrettably, using synchronization with concurrency creates a situation where the more performance-optimal our code becomes, the more difficult it becomes to understand and maintain.
 
@@ -207,7 +209,7 @@ So let's not share any state.
 
 %% Well, the concurrency bugs we highlighted were all related to the interdependence of concurrent tasks - put another way, we get problems when we share state between tasks.
 
-%% So, if we want to avoid the problems associated with synchronizing access to shared state, one trivial remedy is to avoid shared state altogether.
+%% So, if we want to avoid the problems associated with access to shared state, one trivial remedy is to avoid shared state altogether.
 
 %% And indeed, when you can pull it off, this works *beautifully* - it scales perfectly because there is no relationship at all between the tasks, so there's no possibility of a bottleneck as you scale.
 
@@ -282,7 +284,7 @@ So let's not allow any mutation of it.
 
 ### Disadvantages
 
-* can't migrate between distinct machines without copying data
+* can't migrate between distinct tasks without copying data
 * only applies to tasks that can be made otherwise independent
 * breaks as soon as you need to share something mutable
 

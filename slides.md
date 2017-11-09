@@ -105,9 +105,11 @@ More synchronization => more waiting
 
 Lose as little concurrency as possible by being precise
 
+More precise synchronization => more concurrency
+
 More precise synchronization => more cognitive complexity
 
-Mo' concurrency => mo' problems
+More precise synchronization => more problems
 
 ---
 
@@ -185,7 +187,7 @@ So let's not allow any mutation of it.
 
 ### Disadvantages
 
-* can't migrate between distinct machines without copying data
+* can't migrate between distinct tasks without copying data
 * only applies to tasks that can be made otherwise independent
 * breaks as soon as you need to share something mutable
 
